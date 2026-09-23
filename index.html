@@ -5,7 +5,6 @@
   Last updated: 2026-07-18
 
   Changelog:
-  - 2.2.0 (2026-09-23): added .dat file from NOLEN Well Analyzer
   - 2.1.0 (2026-07-18): Added .dyn file format support alongside .dat (auto-detected).
                          Fixed header scroll-shrink flicker (hysteresis). Added PWA meta tags.
   - 2.0.0: Added Quick CBE Estimator tab, interactive chart tooltips, admin panel,
@@ -74,6 +73,40 @@
         }
         @media (max-width: 640px) {
             .app-header-spacer { height: 133px; }
+        }
+        .install-banner {
+            position: relative;
+            z-index: 40;
+            background: #16213e;
+            color: #e0e0e0;
+            padding: 10px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            font-size: 0.85rem;
+            text-align: center;
+            flex-wrap: wrap;
+            border-bottom: 1px solid #0f3460;
+        }
+        .install-banner-btn {
+            background: #00d4ff;
+            color: #0a0a1a;
+            border: none;
+            border-radius: 6px;
+            padding: 6px 14px;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 0.85rem;
+        }
+        .install-banner-close {
+            background: none;
+            border: none;
+            color: #888;
+            cursor: pointer;
+            font-size: 1rem;
+            padding: 0 4px;
+            line-height: 1;
         }
         .app-header.is-scrolled {
             padding: 8px 20px;
@@ -494,6 +527,13 @@
         </h1>
         <div id="appHeaderSpacer" class="app-header-spacer"></div>
 
+        <!-- INSTALL APP HINT (Android: real install button; iOS: manual instructions) -->
+        <div id="installBanner" class="install-banner hidden">
+            <span id="installBannerText"></span>
+            <button id="installBannerBtn" class="install-banner-btn hidden">📲 Install</button>
+            <button id="installBannerClose" class="install-banner-close" aria-label="Dismiss">✕</button>
+        </div>
+
         <!-- ADMIN PASSWORD DIALOG (hidden until triggered) -->
         <div id="adminPasswordOverlay" class="admin-overlay">
             <div class="admin-box">
@@ -628,12 +668,12 @@
             <h2><span class="step-badge">STEP 0</span> Database File</h2>
             <p style="color:#888; font-size:0.85rem; margin-bottom:10px;">
                 The app has a <b>built-in database</b> and works immediately with no files needed.
-                To use updated data: place <b>database.json</b> in the same folder, or select it manually below.
+                To use updated data: place <b>units.json</b> in a <b>src</b> folder beside index.html, or select a database JSON file manually below.
             </p>
             <div id="dbMsg" class="status info">⏳ Loading database...</div>
 
             <div id="fallbackLoader" class="fallback-box hidden">
-                <p>💡 To override the built-in data, select your <b>database.json</b>:</p>
+                <p>💡 To override the built-in data, select your database JSON file:</p>
                 <div class="input-group">
                     <label>database.json:</label>
                     <input type="file" id="dbFile" accept=".json">
@@ -1315,16 +1355,28 @@
         }
 
         // ===== AUTO-LOAD VIA FETCH =====
+        // Returns true if a database file was found and applied, false otherwise.
         async function autoLoadDB(filename) {
             try {
                 const response = await fetch(filename);
                 if (!response.ok) throw new Error('Not found: ' + response.status);
                 const json = await response.json();
                 applyDatabase(json);
+                return true;
             } catch (err) {
-                // Fetch blocked or file not found -- embedded DB is already active, that's fine.
-                console.info('database.json not auto-loaded (normal for local files):', err.message);
-                // Show the manual picker as a soft option, not an error
+                // Fetch blocked or file not found -- caller decides what to try next.
+                console.info(filename + ' not auto-loaded (normal if missing/local file):', err.message);
+                return false;
+            }
+        }
+
+        // Tries src/units.json first (preferred location), then database.json
+        // at the app root (older/alternate location, kept for backward
+        // compatibility), before falling back to the manual file picker.
+        async function autoLoadAllDBs() {
+            const foundInSrc = await autoLoadDB('src/units.json');
+            const foundAtRoot = await autoLoadDB('database.json');
+            if (!foundInSrc && !foundAtRoot) {
                 document.getElementById('fallbackLoader').classList.remove('hidden');
             }
         }
@@ -1525,14 +1577,13 @@
         // which will overwrite these values.
         // ═══════════════════════════════════════════════════════════════
         const EMBEDDED_DB = {
-  "units": [
-    {"unitKey": "C-456", "unitDesc": "LC-456D-256-120", "gbRating": 456000, "structLoad": 25600, "beam": 146, "A": 155, "P": 132, "C": 111.07, "I": 111, "K": 175.6, "crankType": "8495B", "crankEffect": 324456, "crankLength": 96, "B_Unbal": 55},
-    {"unitKey": "C-640", "unitDesc": "LC-640D-305-144", "gbRating": 640000, "structLoad": 30500, "beam": 173, "A": 180, "P": 144.5, "C": 120.08, "I": 120, "K": 191.3, "crankType": "94110B", "crankEffect": 470810, "crankLength": 110, "B_Unbal": -520},
-    {"unitKey": "C-912", "unitDesc": "LC-912D-365-168", "gbRating": 912000, "structLoad": 36500, "beam": 221, "A": 210, "P": 148.5, "C": 120.03, "I": 120, "K": 192.88, "crankType": "94110B", "crankEffect": 470810, "crankLength": 110, "B_Unbal": -1500},
-    {"unitKey": "C-1280", "unitDesc": "LC-1280D-427-192", "gbRating": 1280000, "structLoad": 42700, "beam": 247, "A": 210, "P": 172.5, "C": 120.03, "I": 120, "K": 212.19, "crankType": "106110C", "crankEffect": 511771, "crankLength": 110, "B_Unbal": -995},
-    {"unitKey": "LLS-1280", "unitDesc": "SLSC-1280D-427-192", "gbRating": 1280000, "structLoad": 42700, "beam": 309.127, "A": 210.04, "P": 172.44, "C": 120.31, "I": 120, "K": 212.2, "crankType": "GRC120D", "crankEffect": 511470, "crankLength": 110, "B_Unbal": -2070},
-    {"unitKey": "SLS-912", "unitDesc": "SLSC912D-365-168", "gbRating": 912000, "structLoad": 36500, "beam": 0, "A": 210.04, "P": 148.5, "C": 120.31, "I": 120, "K": 192.84, "crankType": "GRC120", "crankEffect": 0, "crankLength": 110, "B_Unbal": -1400},
-    {"unitKey": "LC-320", "unitDesc": "LC320-305-100 WITH 8495B CRANKS", "gbRating": 320000, "structLoad": 30500, "beam": 550, "A": 129, "P": 132, "C": 111.07, "I": 111, "K": 175.55, "crankType": "8495B", "crankEffect": 325000, "crankLength": 96, "B_Unbal": 550}
+"units": [
+    {"unitKey": "C-456", "unitDesc": "C-456D-256-120", "gbRating": 456000, "structLoad": 25600, "beam": 146, "A": 155, "P": 132, "C": 111.07, "I": 111, "K": 175.6, "crankType": "8495B", "crankEffect": 324456, "crankLength": 96, "B_Unbal": 55},
+    {"unitKey": "C-640", "unitDesc": "C-640D-305-144", "gbRating": 640000, "structLoad": 30500, "beam": 173, "A": 180, "P": 144.5, "C": 120.08, "I": 120, "K": 191.3, "crankType": "94110B", "crankEffect": 470810, "crankLength": 110, "B_Unbal": -520},
+    {"unitKey": "C-912", "unitDesc": "C-912D-365-168", "gbRating": 912000, "structLoad": 36500, "beam": 221, "A": 210, "P": 148.5, "C": 120.03, "I": 120, "K": 192.88, "crankType": "94110B", "crankEffect": 470810, "crankLength": 110, "B_Unbal": -1500},
+    {"unitKey": "C-1280", "unitDesc": "C-1280D-427-192", "gbRating": 1280000, "structLoad": 42700, "beam": 247, "A": 210, "P": 172.5, "C": 120.03, "I": 120, "K": 212.19, "crankType": "106110C", "crankEffect": 511771, "crankLength": 110, "B_Unbal": -995},
+    {"unitKey": "LLS-1280", "unitDesc": "LLS-1280D-427-192", "gbRating": 1280000, "structLoad": 42700, "beam": 309.127, "A": 210.04, "P": 172.44, "C": 120.31, "I": 120, "K": 212.2, "crankType": "GRC120D", "crankEffect": 511470, "crankLength": 110, "B_Unbal": -2070},
+    {"unitKey": "SLS-912", "unitDesc": "C912D-365-168", "gbRating": 912000, "structLoad": 36500, "beam": 0, "A": 210.04, "P": 148.5, "C": 120.31, "I": 120, "K": 192.84, "crankType": "GRC120", "crankEffect": 0, "crankLength": 110, "B_Unbal": -1400}
   ],
   "strokes": [
     {"unitKey": "C-456", "strokeLength": 120, "R": 42},
@@ -1557,11 +1608,7 @@
     {"unitKey": "LLS-1280", "strokeLength": 97, "R": 27.56},
     {"unitKey": "SLS-912", "strokeLength": 170, "R": 47},
     {"unitKey": "SLS-912", "strokeLength": 141, "R": 39},
-    {"unitKey": "SLS-912", "strokeLength": 113, "R": 31.89},
-    {"unitKey": "LC-320", "strokeLength": 100, "R": 42},
-    {"unitKey": "LC-320", "strokeLength": 85, "R": 36},
-    {"unitKey": "LC-320", "strokeLength": 71, "R": 30},
-    {"unitKey": "LC-320", "strokeLength": 57, "R": 24}
+    {"unitKey": "SLS-912", "strokeLength": 113, "R": 31.89}
   ],
   "counterweights": [
     {"cwType": "1RO", "weight": 2075, "armLength": 52},
@@ -1587,8 +1634,8 @@
             msg.className = 'status success';
             msg.textContent = '✅ Built-in database loaded. You can load database.json to override.';
 
-            // Step 2: try fetching database.json from same folder to override
-            autoLoadDB('database.json');
+            // Step 2: try fetching src/units.json (or database.json) to override
+            autoLoadAllDBs();
         }
 
         // ===== FALLBACK: MANUAL JSON FILE LOAD =====
@@ -3274,6 +3321,64 @@
 
         // ===== INIT =====
         window.addEventListener('DOMContentLoaded', initDatabases);
+
+        // ===== INSTALL APP HINT =====
+        // Android/Chrome: capture the native beforeinstallprompt event and
+        // offer a real "Install" button. iOS Safari never fires that event
+        // and has no programmatic install API at all -- the only way to
+        // install there is Share -> Add to Home Screen, so we just show that
+        // instruction instead of a button.
+        (function () {
+            const banner = document.getElementById('installBanner');
+            const text = document.getElementById('installBannerText');
+            const installBtn = document.getElementById('installBannerBtn');
+            const closeBtn = document.getElementById('installBannerClose');
+            if (!banner || !text || !installBtn || !closeBtn) return;
+
+            const DISMISS_KEY = 'gbtorque_install_banner_dismissed';
+            if (localStorage.getItem(DISMISS_KEY) === '1') return;
+
+            // Already installed / running standalone -- nothing to offer.
+            const isStandalone = window.matchMedia('(display-mode: standalone)').matches
+                || window.navigator.standalone === true;
+            if (isStandalone) return;
+
+            const ua = window.navigator.userAgent;
+            const isIOS = /iPad|iPhone|iPod/.test(ua) && !window.MSStream;
+
+            let deferredPrompt = null;
+
+            function showBanner() { banner.classList.remove('hidden'); }
+            function dismiss() {
+                banner.classList.add('hidden');
+                localStorage.setItem(DISMISS_KEY, '1');
+            }
+            closeBtn.addEventListener('click', dismiss);
+
+            if (isIOS) {
+                text.textContent = '📲 Install this app: tap Share, then "Add to Home Screen"';
+                showBanner();
+            } else {
+                window.addEventListener('beforeinstallprompt', (e) => {
+                    e.preventDefault();
+                    deferredPrompt = e;
+                    text.textContent = '📲 Install this app for quick, offline access';
+                    installBtn.classList.remove('hidden');
+                    showBanner();
+                });
+
+                installBtn.addEventListener('click', async () => {
+                    if (!deferredPrompt) return;
+                    installBtn.disabled = true;
+                    deferredPrompt.prompt();
+                    await deferredPrompt.userChoice;
+                    deferredPrompt = null;
+                    dismiss();
+                });
+
+                window.addEventListener('appinstalled', dismiss);
+            }
+        })();
 
         // ═══════════════════════════════════════════════════════════════
         // SERVICE WORKER: enables offline use after first load / install,

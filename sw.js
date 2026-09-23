@@ -15,7 +15,7 @@
 // as "changed" and go through the update flow below.
 // ═══════════════════════════════════════════════════════════════════
 
-const CACHE_VERSION = 'v1';
+const CACHE_VERSION = 'v2';
 const CACHE_NAME = 'gbtorque-cache-' + CACHE_VERSION;
 
 // Must ALL exist -- cache.addAll() fails entirely if even one 404s.
@@ -33,6 +33,7 @@ const CORE_SHELL = [
 // Missing files here must NOT break installation of the core shell.
 const OPTIONAL_SHELL = [
     './database.json',
+    './src/units.json',
     './equations.js',
 ];
 
