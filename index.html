@@ -622,46 +622,10 @@
         <div class="tab-nav">
             <button class="tab-btn active" id="tabBtnMain" onclick="switchTab('main')">🔧 Full Analysis</button>
             <button class="tab-btn" id="tabBtnQuickCbe" onclick="switchTab('quickCbe')">⚡ Quick CBE Estimator</button>
+            <button class="tab-btn" id="tabBtnHelp" onclick="switchTab('help')">ℹ️ Help</button>
         </div>
 
         <div id="tabMain" class="tab-panel">
-
-<!-- WELCOME CARD -->
-        <div class="card" style="border-color:#ffd700; padding: 20px;">
-            <h2 style="margin-bottom:15px; color:#ffd700;">👋 Welcome to the Pumping Unit Optimization & Balancing Tool</h2>
-            
-            <p style="color:#ccc; font-size:0.95rem; line-height:1.6; margin-bottom:15px;">
-                Optimize your surface pumping unit's efficiency by calculating current gearbox loading and determining the exact counterweight adjustments needed for perfect balance.
-            </p>
-
-            <div style="background: rgba(255, 255, 255, 0.05); padding: 12px 15px; border-radius: 6px; margin-bottom: 15px;">
-                <h4 style="margin: 0 0 8px 0; color: #fff; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.5px;">Two Ways to Analyze:</h4>
-                <ul style="color:#bbb; font-size:0.85rem; line-height:1.7; margin: 0; padding-left: 20px;">
-                    <li>
-                        <strong style="color:#00d4ff;">🔧 Full Analysis</strong> — the complete, dynamometer-based workflow. Upload a
-                        <code style="color:#ffd700;">.dat</code> or <code style="color:#ffd700;">.dyn</code> file (auto-detected), select
-                        the unit and stroke, enter the existing counterweight
-                        setup, and get a full 360° gearbox torque analysis: current vs. optimized loading, permissible-load boundaries,
-                        cyclic load factor, motor power, and the precise counterweight movement needed for balance.
-                    </li>
-                    <li>
-                        <strong style="color:#ffd700;">⚡ Quick CBE Estimator</strong> — a fast, standalone estimate for when a full
-                        dynamometer card isn't available. Enter only the Peak and Minimum Polished Rod Loads along with the unit size
-                        and stroke length, and get the equivalent counterbalance moment and recommended counterweight movement,
-                        based on the standard industry approximation (Effective CBE referenced through the unit's maximum torque factor).
-                    </li>
-                </ul>
-            </div>
-
-            <p style="color:#aaa; font-size:0.85rem; margin-top:12px; line-height:1.6; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 12px;">
-                💡 <strong>Need a different unit size?</strong> If you'd like to add more unit sizes to the database, please contact the admin on WhatsApp
-                <br>
-                <a href="https://wa.me/201289630938" target="_blank" rel="noopener"
-                   style="color:#00ff88; font-weight:600; text-decoration:none; display: inline-block; margin-top: 5px;">
-                    📱 +20 128 963 0938
-                </a>
-            </p>
-        </div>
 
         <!-- STEP 0: AUTO-LOAD DATABASE (hidden from view, still runs in background) -->
         <div class="card hidden" id="step0Card">
@@ -1151,6 +1115,58 @@
 
         </div> <!-- /tabQuickCbe -->
 
+        <!-- ℹ️ HELP TAB -->
+        <div id="tabHelp" class="tab-panel hidden">
+            <div class="card" style="border-color:#ffd700; padding:20px;">
+                <h2 style="margin-bottom:15px; color:#ffd700;">👋 How to Use</h2>
+
+                <p style="color:#ccc; font-size:0.95rem; line-height:1.6; margin-bottom:15px;">
+                    Optimize your surface pumping unit's efficiency by calculating current gearbox loading
+                    and determining the exact counterweight adjustments needed for perfect balance.
+                </p>
+
+                <div style="background:rgba(255,255,255,0.05); padding:12px 15px; border-radius:6px; margin-bottom:15px;">
+                    <h4 style="margin:0 0 8px 0; color:#fff; font-size:0.9rem; text-transform:uppercase; letter-spacing:0.5px;">Two Ways to Analyze:</h4>
+                    <ul style="color:#bbb; font-size:0.85rem; line-height:1.7; margin:0; padding-left:20px;">
+                        <li style="margin-bottom:10px;">
+                            <strong style="color:#00d4ff;">🔧 Full Analysis</strong> — the complete, dynamometer-based workflow.
+                            Upload a <code style="color:#ffd700;">.dat</code> or <code style="color:#ffd700;">.dyn</code> file,
+                            select the unit and stroke, enter the existing counterweight setup, and get a full 360° gearbox torque
+                            analysis: current vs. optimized loading, permissible-load boundaries, cyclic load factor, motor power,
+                            and the precise counterweight movement needed for balance.
+                        </li>
+                        <li>
+                            <strong style="color:#ffd700;">⚡ Quick CBE Estimator</strong> — a fast, standalone estimate for when
+                            a full dynamometer card isn't available. Enter only the Peak and Minimum Polished Rod Loads along with
+                            the unit size and stroke length, and get the equivalent counterbalance moment and recommended
+                            counterweight movement, using the correct torque-factor angle (not the 90° assumption).
+                        </li>
+                    </ul>
+                </div>
+
+                <div style="background:rgba(255,255,255,0.03); padding:12px 15px; border-radius:6px; margin-bottom:15px; border:1px solid rgba(0,212,255,0.15);">
+                    <h4 style="margin:0 0 8px 0; color:#00d4ff; font-size:0.9rem; text-transform:uppercase; letter-spacing:0.5px;">Full Analysis — Step by Step:</h4>
+                    <ol style="color:#bbb; font-size:0.85rem; line-height:1.8; margin:0; padding-left:20px;">
+                        <li>Upload your <code style="color:#ffd700;">.dat</code> / <code style="color:#ffd700;">.dyn</code> dynamometer card file</li>
+                        <li>Select unit size and stroke length — auto-matched from the file header</li>
+                        <li>Choose rotation direction (CW / CCW)</li>
+                        <li>Enter existing counterweight types and positions (Move in inches)</li>
+                        <li>Run the torque analysis — charts, CLF, motor power, and GB loading appear</li>
+                        <li>Use Step 6 to read the required counterweight movement for optimal balance</li>
+                    </ol>
+                </div>
+
+                <p style="color:#aaa; font-size:0.85rem; line-height:1.6; border-top:1px solid rgba(255,255,255,0.1); padding-top:12px; margin:0;">
+                    💡 <strong>Need a different unit size?</strong> Contact the admin on WhatsApp to add more units to the database:
+                    <br>
+                    <a href="https://wa.me/201289630938" target="_blank" rel="noopener"
+                       style="color:#00ff88; font-weight:600; text-decoration:none; display:inline-block; margin-top:5px;">
+                        📱 +20 128 963 0938
+                    </a>
+                </p>
+            </div>
+        </div> <!-- /tabHelp -->
+
         <!-- ABOUT / CONTACT CARD -->
         <div class="card" style="border-color:#0f3460; margin-top:10px;">
             <h2 style="color:#00d4ff;">👤 About</h2>
@@ -1192,11 +1208,12 @@
 
         // ===== TAB SWITCHING =====
         function switchTab(name) {
-            const isMain = name === 'main';
-            document.getElementById('tabMain').classList.toggle('hidden', !isMain);
-            document.getElementById('tabQuickCbe').classList.toggle('hidden', isMain);
-            document.getElementById('tabBtnMain').classList.toggle('active', isMain);
-            document.getElementById('tabBtnQuickCbe').classList.toggle('active', !isMain);
+            ['main', 'quickCbe', 'help'].forEach(tab => {
+                const panelId = tab === 'main' ? 'tabMain' : tab === 'quickCbe' ? 'tabQuickCbe' : 'tabHelp';
+                const btnId   = tab === 'main' ? 'tabBtnMain' : tab === 'quickCbe' ? 'tabBtnQuickCbe' : 'tabBtnHelp';
+                document.getElementById(panelId).classList.toggle('hidden', tab !== name);
+                document.getElementById(btnId).classList.toggle('active', tab === name);
+            });
         }
 
         // ===== HIDDEN ADMIN MODE =====
@@ -1730,10 +1747,13 @@
         // Sweeps the same kinematics chain (calcPhi -> calcE/F/G/H -> calcTorqueFactor) used by the
         // main analysis, at 1-degree steps, and returns the largest |TF| found -- the true peak,
         // rather than assuming it lands at exactly 90 degrees.
+        // Returns { tfMax, tfMaxBrad, tfMaxDeg, sinTfMax }
+        // Tf_max can occur at any angle (not necessarily 90°) — the angle is
+        // needed so mIc = (effCBE−B)×|tfMax| / sin(θ_Tfmax) is correct.
         function calcTFmax(unit, stroke) {
             const A = unit.A, P = unit.P, C = unit.C, I_ = unit.I, K = unit.K, R = stroke.r;
             const Phi = window.EQ.calcPhi(I_, K);
-            let tfMax = 0;
+            let tfMax = 0, tfMaxBrad = Math.PI / 2;
             for (let deg = 0; deg < 360; deg++) {
                 const B_rad = deg * Math.PI / 180;
                 const E  = window.EQ.calcE(B_rad, Phi, C, P, K, R);
@@ -1741,9 +1761,10 @@
                 const G  = window.EQ.calcG(B_rad, Phi, C, P, K, R, F_);
                 const H  = window.EQ.calcH(E, G, B_rad, Phi);
                 const tf = window.EQ.calcTorqueFactor(1, R, A, C, H, E);
-                if (Math.abs(tf) > Math.abs(tfMax)) tfMax = tf;
+                if (Math.abs(tf) > Math.abs(tfMax)) { tfMax = tf; tfMaxBrad = B_rad; }
             }
-            return tfMax;
+            const sinTfMax = Math.sin(tfMaxBrad);
+            return { tfMax, tfMaxBrad, tfMaxDeg: tfMaxBrad * 180 / Math.PI, sinTfMax };
         }
 
         // ===== QUICK CBE ESTIMATOR: Effective CBE = (PPRL + MPRL) / 2, then M_ic = (EffCBE - B_unbal) x TF_max =====
@@ -1776,9 +1797,11 @@
             }
 
             const B_unbal = parseFloat(qbSelectedUnit.B_Unbal) || 0;
-            const tfMax = calcTFmax(qbSelectedUnit, qbSelectedStroke);
-            const mIc   = (effCBE - B_unbal) * Math.abs(tfMax);
-            tfMaxEl.textContent = tfMax.toFixed(2) + ' in';
+            const { tfMax, tfMaxDeg, sinTfMax } = calcTFmax(qbSelectedUnit, qbSelectedStroke);
+            const mIc = Math.abs(sinTfMax) > 1e-6
+                ? (effCBE - B_unbal) * Math.abs(tfMax) / Math.abs(sinTfMax)
+                : (effCBE - B_unbal) * Math.abs(tfMax);
+            tfMaxEl.textContent = tfMax.toFixed(2) + ' in  @ ' + tfMaxDeg.toFixed(1) + '°';
             micEl.textContent   = mIc.toLocaleString(undefined, { maximumFractionDigits: 0 }) + ' in-lb';
             noteEl.textContent = '';
 
@@ -1805,8 +1828,10 @@
 
             const effCBE  = (pprl + mprl) / 2;
             const B_unbal = parseFloat(qbSelectedUnit.B_Unbal) || 0;
-            const tfMax   = calcTFmax(qbSelectedUnit, qbSelectedStroke);
-            const M_ic    = (effCBE - B_unbal) * Math.abs(tfMax);
+            const { tfMax, sinTfMax } = calcTFmax(qbSelectedUnit, qbSelectedStroke);
+            const M_ic = Math.abs(sinTfMax) > 1e-6
+                ? (effCBE - B_unbal) * Math.abs(tfMax) / Math.abs(sinTfMax)
+                : (effCBE - B_unbal) * Math.abs(tfMax);
             const crankEffect = qbSelectedUnit.crankEffect;
             const crankLength = qbSelectedUnit.crankLength;
 
@@ -2381,9 +2406,15 @@
             // ── CBE-Optimized (Excel I5) ─────────────────────────────────────────
             // I3/J3/K3 = peak-load row's { load, B_rad, tf }
             // I4/J4/K4 = min-load  row's { load, B_rad, tf }
-            // M_optimized = -ABS( (K3·(I3-B) - K4·(I4-B)) / (sin(J3) - sin(J4)) )
-            const peakRow = kinem.reduce((a, b) => b.load > a.load ? b : a);
-            const minRow  = kinem.reduce((a, b) => b.load < a.load ? b : a);
+            // M_optimized — textbook eq 2.113
+            // θ_A = angle of peak |wellLoadTorque| on upstroke   (not peak load)
+            // θ_D = angle of peak |wellLoadTorque| on downstroke (not min load)
+            const upRows  = kinem.filter(r => r.isUp);
+            const dnRows  = kinem.filter(r => !r.isUp);
+            const peakRow = (upRows.length ? upRows : kinem)
+                .reduce((a, b) => Math.abs(b.tf*(b.load-B_unbal)) > Math.abs(a.tf*(a.load-B_unbal)) ? b : a);
+            const minRow  = (dnRows.length ? dnRows : kinem)
+                .reduce((a, b) => Math.abs(b.tf*(b.load-B_unbal)) > Math.abs(a.tf*(a.load-B_unbal)) ? b : a);
             const I3 = peakRow.load, J3 = peakRow.B_rad, K3 = peakRow.tf;
             const I4 = minRow.load,  J4 = minRow.B_rad,  K4 = minRow.tf;
             const sinDiff    = Math.sin(J3) - Math.sin(J4);
