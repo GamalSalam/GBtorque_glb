@@ -523,7 +523,7 @@
             ontouchmove="handleTitleTouchEnd(event)"
             ontouchcancel="handleTitleTouchEnd(event)">
             <img src="src/header-logo.png" alt="Gearbox Torque Analyzer logo" class="app-logo">
-            <span class="app-title-text">Gearbox Torque Analyzer <span class="app-version-badge">v2.1</span></span>
+            <span class="app-title-text">Gearbox Torque Analyzer <span class="app-version-badge">v3.0</span></span>
         </h1>
         <div id="appHeaderSpacer" class="app-header-spacer"></div>
 
@@ -1405,6 +1405,11 @@
                 dbLoaded.units = true;
             }
             if (json.strokes) {
+                // Clear existing strokes for any unitKey present in this batch
+                // to prevent duplicates when applyDatabase is called more than once
+                // (e.g. embedded DB first, then user loads external database.json).
+                const keysInBatch = [...new Set(json.strokes.map(r => r.unitKey))];
+                keysInBatch.forEach(k => { strokesDB[k] = []; });
                 json.strokes.forEach(row => {
                     if (!strokesDB[row.unitKey]) strokesDB[row.unitKey] = [];
                     strokesDB[row.unitKey].push({ sl: row.strokeLength, r: row.R });
@@ -1747,13 +1752,10 @@
         // Sweeps the same kinematics chain (calcPhi -> calcE/F/G/H -> calcTorqueFactor) used by the
         // main analysis, at 1-degree steps, and returns the largest |TF| found -- the true peak,
         // rather than assuming it lands at exactly 90 degrees.
-        // Returns { tfMax, tfMaxBrad, tfMaxDeg, sinTfMax }
-        // Tf_max can occur at any angle (not necessarily 90°) — the angle is
-        // needed so mIc = (effCBE−B)×|tfMax| / sin(θ_Tfmax) is correct.
         function calcTFmax(unit, stroke) {
             const A = unit.A, P = unit.P, C = unit.C, I_ = unit.I, K = unit.K, R = stroke.r;
             const Phi = window.EQ.calcPhi(I_, K);
-            let tfMax = 0, tfMaxBrad = Math.PI / 2;
+            let tfMax = 0;
             for (let deg = 0; deg < 360; deg++) {
                 const B_rad = deg * Math.PI / 180;
                 const E  = window.EQ.calcE(B_rad, Phi, C, P, K, R);
@@ -1761,10 +1763,9 @@
                 const G  = window.EQ.calcG(B_rad, Phi, C, P, K, R, F_);
                 const H  = window.EQ.calcH(E, G, B_rad, Phi);
                 const tf = window.EQ.calcTorqueFactor(1, R, A, C, H, E);
-                if (Math.abs(tf) > Math.abs(tfMax)) { tfMax = tf; tfMaxBrad = B_rad; }
+                if (Math.abs(tf) > Math.abs(tfMax)) tfMax = tf;
             }
-            const sinTfMax = Math.sin(tfMaxBrad);
-            return { tfMax, tfMaxBrad, tfMaxDeg: tfMaxBrad * 180 / Math.PI, sinTfMax };
+            return tfMax;
         }
 
         // ===== QUICK CBE ESTIMATOR: Effective CBE = (PPRL + MPRL) / 2, then M_ic = (EffCBE - B_unbal) x TF_max =====
@@ -1797,11 +1798,9 @@
             }
 
             const B_unbal = parseFloat(qbSelectedUnit.B_Unbal) || 0;
-            const { tfMax, tfMaxDeg, sinTfMax } = calcTFmax(qbSelectedUnit, qbSelectedStroke);
-            const mIc = Math.abs(sinTfMax) > 1e-6
-                ? (effCBE - B_unbal) * Math.abs(tfMax) / Math.abs(sinTfMax)
-                : (effCBE - B_unbal) * Math.abs(tfMax);
-            tfMaxEl.textContent = tfMax.toFixed(2) + ' in  @ ' + tfMaxDeg.toFixed(1) + '°';
+            const tfMax = calcTFmax(qbSelectedUnit, qbSelectedStroke);
+            const mIc   = (effCBE - B_unbal) * Math.abs(tfMax);
+            tfMaxEl.textContent = tfMax.toFixed(2) + ' in';
             micEl.textContent   = mIc.toLocaleString(undefined, { maximumFractionDigits: 0 }) + ' in-lb';
             noteEl.textContent = '';
 
@@ -1828,10 +1827,8 @@
 
             const effCBE  = (pprl + mprl) / 2;
             const B_unbal = parseFloat(qbSelectedUnit.B_Unbal) || 0;
-            const { tfMax, sinTfMax } = calcTFmax(qbSelectedUnit, qbSelectedStroke);
-            const M_ic = Math.abs(sinTfMax) > 1e-6
-                ? (effCBE - B_unbal) * Math.abs(tfMax) / Math.abs(sinTfMax)
-                : (effCBE - B_unbal) * Math.abs(tfMax);
+            const tfMax   = calcTFmax(qbSelectedUnit, qbSelectedStroke);
+            const M_ic    = (effCBE - B_unbal) * Math.abs(tfMax);
             const crankEffect = qbSelectedUnit.crankEffect;
             const crankLength = qbSelectedUnit.crankLength;
 
@@ -2014,9 +2011,73 @@
             return null;
         }
 
+        // Resets all analysis state when a new .dat/.dyn file is uploaded.
+        // Clears selections, results, charts, and hidden cards so the user
+        // starts fresh without stale values from the previous file.
+        function resetAnalysisState() {
+            // Unit & stroke selectors
+            document.getElementById('unitSize').value = '';
+            resetUnitSelection();
+            selectedUnit   = null;
+            selectedStroke = null;
+            fileStrokeLength = null;
+
+            // Counterbalance inputs
+            ['cbType1','cbType2'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.value = '';
+            });
+            ['cbMove1','cbMove2'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.value = '0';
+            });
+            existingM = 0;
+
+            // Step 6 CW movement selectors
+            ['cwcType1','cwcType2'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.value = '';
+            });
+            _cwcState = null;
+
+            // Hide result cards
+            ['step4Card','step5Card','step6Card','dashboardCard'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.classList.add('hidden');
+            });
+
+            // Clear summary / dashboard display values
+            ['sumGbLoading','sumGbLoadingOpt','sumCLF','sumMOptimized',
+             'dashPeakLoad','dashMinLoad','dashUpCount','dashDownCount',
+             'dashExistingM','dashPeakTorque','dashPeakTorqueOpt',
+             'dashPRWork','dashPRPower','dashMotorPower'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.textContent = '-';
+            });
+
+            // Clear hidden geometry inputs
+            ['dimA','dimP','dimC','dimI','dimK','dimR','gbRating','structLoad',
+             'crankEffect','crankLength','beamWeight','crankType'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.value = '';
+            });
+
+            // Clear charts (if canvases exist and were previously drawn)
+            ['chartLoadPos','chartTorqueAngle'].forEach(id => {
+                const canvas = document.getElementById(id);
+                if (canvas && canvas.getContext) {
+                    const ctx = canvas.getContext('2d');
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                }
+            });
+        }
+
         document.getElementById('datFile').addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (!file) return;
+
+            resetAnalysisState();   // ← clear all stale state from previous file
+
             const status = document.getElementById('status');
             status.className = 'status';
             status.textContent = 'Reading...';
@@ -2406,15 +2467,9 @@
             // ── CBE-Optimized (Excel I5) ─────────────────────────────────────────
             // I3/J3/K3 = peak-load row's { load, B_rad, tf }
             // I4/J4/K4 = min-load  row's { load, B_rad, tf }
-            // M_optimized — textbook eq 2.113
-            // θ_A = angle of peak |wellLoadTorque| on upstroke   (not peak load)
-            // θ_D = angle of peak |wellLoadTorque| on downstroke (not min load)
-            const upRows  = kinem.filter(r => r.isUp);
-            const dnRows  = kinem.filter(r => !r.isUp);
-            const peakRow = (upRows.length ? upRows : kinem)
-                .reduce((a, b) => Math.abs(b.tf*(b.load-B_unbal)) > Math.abs(a.tf*(a.load-B_unbal)) ? b : a);
-            const minRow  = (dnRows.length ? dnRows : kinem)
-                .reduce((a, b) => Math.abs(b.tf*(b.load-B_unbal)) > Math.abs(a.tf*(a.load-B_unbal)) ? b : a);
+            // M_optimized = -ABS( (K3·(I3-B) - K4·(I4-B)) / (sin(J3) - sin(J4)) )
+            const peakRow = kinem.reduce((a, b) => b.load > a.load ? b : a);
+            const minRow  = kinem.reduce((a, b) => b.load < a.load ? b : a);
             const I3 = peakRow.load, J3 = peakRow.B_rad, K3 = peakRow.tf;
             const I4 = minRow.load,  J4 = minRow.B_rad,  K4 = minRow.tf;
             const sinDiff    = Math.sin(J3) - Math.sin(J4);
