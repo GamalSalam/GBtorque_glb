@@ -9,13 +9,13 @@
 // so nobody loses in-progress form data mid-calculation.
 //
 // ── HOW TO SHIP AN UPDATE ─────────────────────────────────────────
-// Bump CACHE_VERSION below (e.g. 'v1' -> 'v2') any time you change
-// GearBalanceAnalyzer.html or any cached asset. That's the ONLY step
+// Bump CACHE_VERSION below (e.g. 'v3' -> 'v4') any time you change
+// index.html, src/units.json, or any cached asset. That's the ONLY step
 // required -- the version bump is what makes browsers detect this file
 // as "changed" and go through the update flow below.
 // ═══════════════════════════════════════════════════════════════════
 
-const CACHE_VERSION = 'v2';
+const CACHE_VERSION = 'v3';
 const CACHE_NAME = 'gbtorque-cache-' + CACHE_VERSION;
 
 // Must ALL exist -- cache.addAll() fails entirely if even one 404s.
@@ -43,14 +43,11 @@ self.addEventListener('install', (event) => {
         await cache.addAll(CORE_SHELL);
         await Promise.all(OPTIONAL_SHELL.map(async (url) => {
             try {
-                const res = await fetch(url);
+                const res = await fetch(url, { cache: 'no-cache' });
                 if (res && res.ok) await cache.put(url, res);
             } catch (e) { /* fine if it doesn't exist -- skip silently */ }
         }));
     })());
-    // Do NOT skipWaiting() here -- wait for the page to explicitly approve
-    // the update (see the 'message' handler below) so an in-progress
-    // session isn't yanked out from under the user.
 });
 
 self.addEventListener('activate', (event) => {
@@ -70,28 +67,30 @@ self.addEventListener('fetch', (event) => {
     const req = event.request;
     if (req.method !== 'GET') return; // don't touch POSTs etc.
 
+    const url = new URL(req.url);
     const isHTML = req.mode === 'navigate' ||
                    (req.headers.get('accept') || '').includes('text/html');
+    const isDataFile = url.pathname.endsWith('.json') || url.pathname.endsWith('equations.js');
 
-    if (isHTML) {
-        // Network-first for the app page itself: always try to get the
-        // latest version when online; fall back to the cached copy the
-        // instant the network is unavailable.
+    if (isHTML || isDataFile) {
+        // Network-first for HTML & data files (units.json, equations.js):
+        // always fetch the latest version when online and update the cache;
+        // fall back to the cached copy immediately when offline.
         event.respondWith((async () => {
             try {
-                const fresh = await fetch(req);
-                const cache = await caches.open(CACHE_NAME);
-                cache.put(req, fresh.clone());
+                const fresh = await fetch(req, { cache: 'no-cache' });
+                if (fresh && fresh.ok) {
+                    const cache = await caches.open(CACHE_NAME);
+                    cache.put(req, fresh.clone());
+                }
                 return fresh;
             } catch (e) {
                 const cached = await caches.match(req);
-                return cached || caches.match('./index.html');
+                return cached || (isHTML ? caches.match('./index.html') : Response.error());
             }
         })());
     } else {
-        // Cache-first for everything else (images, manifest, etc.) --
-        // instant offline load; refresh the cached copy in the background
-        // whenever a network fetch happens to succeed.
+        // Cache-first for static assets (images, icons, etc.)
         event.respondWith((async () => {
             const cached = await caches.match(req);
             const networkFetch = fetch(req).then((res) => {

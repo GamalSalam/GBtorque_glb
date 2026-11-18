@@ -603,10 +603,20 @@
                     <div id="admCwMsg" class="admin-msg"></div>
                 </div>
 
+                <!-- Import Database -->
+                <div class="admin-section">
+                    <label style="color:#00d4ff; font-size:0.85rem; margin-bottom:8px;">📂 Import Units Database (units.json / database.json)</label>
+                    <input type="file" id="admImportFile" accept=".json" style="display:none;" onchange="admImportDatabase(event)">
+                    <button class="admin-btn secondary" style="width:100%; border:1px dashed #00d4ff; color:#00d4ff;" onclick="document.getElementById('admImportFile').click()">
+                        ⬆ Import JSON &amp; Replace Existing Data
+                    </button>
+                    <div id="admImportMsg" class="admin-msg"></div>
+                </div>
+
                 <!-- Export / Close -->
                 <div class="admin-section">
                     <div class="btn-row">
-                        <button class="admin-btn secondary" onclick="admExportDatabase()">⬇ Export database.json</button>
+                        <button class="admin-btn secondary" onclick="admExportDatabase()">⬇ Export units.json</button>
                         <button class="admin-btn primary" onclick="closeAdminPanel()">Close</button>
                     </div>
                     <div style="color:#666; font-size:0.75rem; margin-top:10px; line-height:1.5;">
@@ -1330,6 +1340,41 @@
             ['admCwType','admCwWeight','admCwArmLength'].forEach(id => document.getElementById(id).value = '');
         }
 
+        function admImportDatabase(event) {
+            const file = event.target.files[0];
+            const msg = document.getElementById('admImportMsg');
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(ev) {
+                try {
+                    const json = JSON.parse(ev.target.result);
+                    if (!json.units && !json.strokes && !json.counterweights) {
+                        msg.className = 'admin-msg err';
+                        msg.textContent = '❌ Invalid file: missing units, strokes, or counterweights.';
+                        return;
+                    }
+                    // Replace existing data completely
+                    applyDatabase(json, true);
+
+                    // Reset current unit/stroke selection to avoid stale dropdown state
+                    const uSel = document.getElementById('unitSize');
+                    if (uSel) { uSel.value = ''; resetUnitSelection(); }
+                    const qbSel = document.getElementById('qbUnitSize');
+                    if (qbSel) { qbSel.value = ''; qbOnUnitChange(); }
+
+                    msg.className = 'admin-msg ok';
+                    msg.textContent = '✅ Imported "' + file.name + '": ' + Object.keys(unitsDB).length + ' units loaded (replaced old data).';
+                } catch (err) {
+                    msg.className = 'admin-msg err';
+                    msg.textContent = '❌ JSON parse error: ' + err.message;
+                } finally {
+                    event.target.value = ''; // allow re-importing the same file if edited
+                }
+            };
+            reader.readAsText(file);
+        }
+
         function admExportDatabase() {
             const units = Object.values(unitsDB);
             const strokes = [];
@@ -1343,7 +1388,7 @@
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = 'database.json';
+            a.download = 'units.json';
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
@@ -1375,10 +1420,13 @@
         // Returns true if a database file was found and applied, false otherwise.
         async function autoLoadDB(filename) {
             try {
-                const response = await fetch(filename);
+                // cache: 'no-cache' ensures the browser fetches the latest units.json from GitHub
+                // instead of serving an older cached copy from Service Worker / HTTP cache.
+                const response = await fetch(filename, { cache: 'no-cache' });
                 if (!response.ok) throw new Error('Not found: ' + response.status);
                 const json = await response.json();
-                applyDatabase(json);
+                applyDatabase(json, true); // replace embedded data completely to prevent duplicates
+                console.log('[DB] Successfully loaded external database from:', filename);
                 return true;
             } catch (err) {
                 // Fetch blocked or file not found -- caller decides what to try next.
@@ -1392,32 +1440,54 @@
         // compatibility), before falling back to the manual file picker.
         async function autoLoadAllDBs() {
             const foundInSrc = await autoLoadDB('src/units.json');
+            if (foundInSrc) return;
             const foundAtRoot = await autoLoadDB('database.json');
-            if (!foundInSrc && !foundAtRoot) {
+            if (!foundAtRoot) {
                 document.getElementById('fallbackLoader').classList.remove('hidden');
             }
         }
 
-        function applyDatabase(json) {
+        function applyDatabase(json, replaceExisting = false) {
             // json must have: { units:[...], strokes:[...], counterweights:[...] }
             if (json.units) {
-                json.units.forEach(row => { if (row.unitKey) unitsDB[row.unitKey] = row; });
+                if (replaceExisting && json.units.length > 0) unitsDB = {};
+                json.units.forEach(row => {
+                    const key = (row.unitKey || '').trim();
+                    if (key) {
+                        row.unitKey = key;
+                        unitsDB[key] = row;
+                    }
+                });
                 dbLoaded.units = true;
             }
             if (json.strokes) {
-                // Clear existing strokes for any unitKey present in this batch
-                // to prevent duplicates when applyDatabase is called more than once
-                // (e.g. embedded DB first, then user loads external database.json).
-                const keysInBatch = [...new Set(json.strokes.map(r => r.unitKey))];
-                keysInBatch.forEach(k => { strokesDB[k] = []; });
+                if (replaceExisting && json.strokes.length > 0) {
+                    strokesDB = {};
+                } else {
+                    const keysInBatch = [...new Set(json.strokes.map(r => (r.unitKey || '').trim()))];
+                    keysInBatch.forEach(k => { if (k) strokesDB[k] = []; });
+                }
                 json.strokes.forEach(row => {
-                    if (!strokesDB[row.unitKey]) strokesDB[row.unitKey] = [];
-                    strokesDB[row.unitKey].push({ sl: row.strokeLength, r: row.R });
+                    const key = (row.unitKey || '').trim();
+                    if (!key) return;
+                    if (!strokesDB[key]) strokesDB[key] = [];
+                    // Prevent duplicate stroke entries for the same unit
+                    const exists = strokesDB[key].some(s => s.sl === row.strokeLength && s.r === row.R);
+                    if (!exists) {
+                        strokesDB[key].push({ sl: row.strokeLength, r: row.R });
+                    }
                 });
                 dbLoaded.strokes = true;
             }
             if (json.counterweights) {
-                json.counterweights.forEach(row => { if (row.cwType) counterweightsDB[row.cwType] = row; });
+                if (replaceExisting && json.counterweights.length > 0) counterweightsDB = {};
+                json.counterweights.forEach(row => {
+                    const cw = (row.cwType || '').trim();
+                    if (cw) {
+                        row.cwType = cw;
+                        counterweightsDB[cw] = row;
+                    }
+                });
                 dbLoaded.cw = true;
             }
             checkAllDbLoaded();
@@ -1668,7 +1738,7 @@
             reader.onload = function(ev) {
                 try {
                     const json = JSON.parse(ev.target.result);
-                    applyDatabase(json);
+                    applyDatabase(json, true);
                 } catch(err) {
                     document.getElementById('dbMsg').className = 'status error';
                     document.getElementById('dbMsg').textContent = '❌ JSON parse error: ' + err.message;
@@ -1703,10 +1773,23 @@
                 const select = document.getElementById(id);
                 if (!select) return;
                 select.innerHTML = '<option value="">-- Select Unit --</option>';
+                // Detect duplicate unitDesc values so similar units (e.g. C-912 vs SLS-912) are clearly distinguishable
+                const descCounts = {};
+                Object.values(unitsDB).forEach(u => {
+                    const d = (u.unitDesc || '').trim();
+                    if (d) descCounts[d] = (descCounts[d] || 0) + 1;
+                });
                 Object.keys(unitsDB).sort().forEach(key => {
                     const opt = document.createElement('option');
                     opt.value = key; // unitKey stays the value (used for DB lookups)
-                    opt.textContent = unitsDB[key].unitDesc || key; // show unitDesc, fall back to key if missing
+                    const desc = (unitsDB[key].unitDesc || '').trim();
+                    if (!desc) {
+                        opt.textContent = key;
+                    } else if (descCounts[desc] > 1 || (desc !== key && !desc.startsWith(key))) {
+                        opt.textContent = `${key} (${desc})`;
+                    } else {
+                        opt.textContent = desc;
+                    }
                     select.appendChild(opt);
                 });
             });
