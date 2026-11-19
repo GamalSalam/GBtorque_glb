@@ -5,7 +5,7 @@
     {"unitKey": "C-640", "unitDesc": "LC-640D-305-144", "gbRating": 640000, "structLoad": 30500, "beam": 173, "A": 180, "P": 144.5, "C": 120.08, "I": 120, "K": 191.3, "crankType": "94110B", "crankEffect": 470810, "crankLength": 110, "B_Unbal": -520},
     {"unitKey": "C-456", "unitDesc": "LC-456D-256-120", "gbRating": 456000, "structLoad": 25600, "beam": 146, "A": 155, "P": 132, "C": 111.07, "I": 111, "K": 175.6, "crankType": "8495B", "crankEffect": 324456, "crankLength": 96, "B_Unbal": 55},
     {"unitKey": "LC-320", "unitDesc": "LC320-305-100 WITH 8495B CRANKS", "gbRating": 320000, "structLoad": 30500, "beam": 550, "A": 129, "P": 132, "C": 111.07, "I": 111, "K": 175.55, "crankType": "8495B", "crankEffect": 325000, "crankLength": 96, "B_Unbal": 550},
-    {"unitKey": "LLS-1280", "unitDesc": "SLSC-1280D-427-192", "gbRating": 1280000, "structLoad": 42700, "beam": 309.127, "A": 210.04, "P": 172.44, "C": 120.31, "I": 120, "K": 212.2, "crankType": "GRC120D", "crankEffect": 511470, "crankLength": 110, "B_Unbal": -2070},
+    {"unitKey": "LLS-1280", "unitDesc": "LLSC-1280D-427-192", "gbRating": 1280000, "structLoad": 42700, "beam": 309.127, "A": 210.04, "P": 172.44, "C": 120.31, "I": 120, "K": 212.2, "crankType": "GRC120D", "crankEffect": 511470, "crankLength": 110, "B_Unbal": -2070},
     {"unitKey": "SLS-912", "unitDesc": "SLSC912D-365-168", "gbRating": 912000, "structLoad": 36500, "beam": 0, "A": 210.04, "P": 148.5, "C": 120.31, "I": 120, "K": 192.84, "crankType": "GRC120", "crankEffect": 511470, "crankLength": 110, "B_Unbal": -1400}
   ],
   "strokes": [
